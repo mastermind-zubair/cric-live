@@ -367,6 +367,11 @@ exports.recordBall = async (req, res) => {
     };
 
     currentInnings.balls.push(ball);
+    
+    // Store current bowler in innings (only for valid balls)
+    if (ballType !== 'wide' && ballType !== 'no-ball' && ballType !== 'dead-ball') {
+      currentInnings.currentBowler = bowler;
+    }
 
     // Rotate striker/non-striker on odd runs or end of over
     if (actualRuns % 2 === 1 && ballType !== 'wide' && ballType !== 'no-ball') {
@@ -377,6 +382,8 @@ exports.recordBall = async (req, res) => {
     const validBalls = currentInnings.balls.filter(b => b.ballType !== 'wide' && b.ballType !== 'no-ball' && b.ballType !== 'dead-ball');
     if (validBalls.length % 6 === 0 && validBalls.length > 0) {
       [currentInnings.striker, currentInnings.nonStriker] = [currentInnings.nonStriker, currentInnings.striker];
+      // Clear current bowler when over is complete to allow new bowler selection
+      currentInnings.currentBowler = null;
     }
 
     // Check if all out
@@ -387,16 +394,24 @@ exports.recordBall = async (req, res) => {
     await match.save();
 
     const updatedMatch = await Match.findById(match._id)
-      .populate('teamA')
-      .populate('teamB')
+      .populate({
+        path: 'teamA',
+        populate: { path: 'players' }
+      })
+      .populate({
+        path: 'teamB',
+        populate: { path: 'players' }
+      })
       .populate('firstInnings.team')
       .populate('firstInnings.striker')
       .populate('firstInnings.nonStriker')
+      .populate('firstInnings.currentBowler')
       .populate('firstInnings.battingCard.player')
       .populate('firstInnings.bowlingCard.player')
       .populate('secondInnings.team')
       .populate('secondInnings.striker')
       .populate('secondInnings.nonStriker')
+      .populate('secondInnings.currentBowler')
       .populate('secondInnings.battingCard.player')
       .populate('secondInnings.bowlingCard.player');
 

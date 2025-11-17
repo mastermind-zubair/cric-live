@@ -365,19 +365,78 @@
                 }
             }
 
-            // Set current bowler if available
+            // Set current bowler if available (from innings or from previous selection)
             if (currentInnings.currentBowler) {
-                bowlerSelect.value = typeof currentInnings.currentBowler === 'object' 
-                    ? currentInnings.currentBowler._id 
-                    : currentInnings.currentBowler;
-                setBowler(bowlerSelect.value);
+                const bowlerId = typeof currentInnings.currentBowler === 'object' 
+                    ? currentInnings.currentBowler._id.toString()
+                    : currentInnings.currentBowler.toString();
+                bowlerSelect.value = bowlerId;
+                setBowler(bowlerId);
+            } else if (currentBowler) {
+                // Keep current bowler if over is not complete
+                const validBalls = currentInnings.balls.filter(b => 
+                    b.ballType !== 'wide' && b.ballType !== 'no-ball' && b.ballType !== 'dead-ball'
+                );
+                const isOverComplete = validBalls.length % 6 === 0 && validBalls.length > 0;
+                
+                if (!isOverComplete) {
+                    // Check if current bowler has balls in current over
+                    const currentOverBalls = validBalls.slice(-6);
+                    const bowlerBallsInOver = currentOverBalls.filter(b => 
+                        b.bowler && b.bowler.toString() === currentBowler.toString()
+                    ).length;
+                    
+                    if (bowlerBallsInOver > 0 && bowlerBallsInOver < 6) {
+                        // Keep the bowler selected
+                        bowlerSelect.value = currentBowler;
+                    }
+                }
             }
 
             // Remove existing listener and add new one
             const newBowlerSelect = bowlerSelect.cloneNode(true);
             bowlerSelect.parentNode.replaceChild(newBowlerSelect, bowlerSelect);
             newBowlerSelect.addEventListener('change', (e) => {
-                setBowler(e.target.value);
+                const selectedBowler = e.target.value;
+                if (selectedBowler) {
+                    // Check if over is complete before allowing bowler change
+                    const currentInnings = match.currentInnings === 1 ? match.firstInnings : match.secondInnings;
+                    const validBalls = currentInnings.balls.filter(b => 
+                        b.ballType !== 'wide' && b.ballType !== 'no-ball' && b.ballType !== 'dead-ball'
+                    );
+                    const isOverComplete = validBalls.length % 6 === 0 && validBalls.length > 0;
+                    
+                    // If there's a current bowler and over is not complete, prevent change
+                    if (currentBowler && !isOverComplete && validBalls.length > 0) {
+                        const currentOverBalls = validBalls.slice(-6);
+                        const bowlerBallsInOver = currentOverBalls.filter(b => 
+                            b.bowler && b.bowler.toString() === currentBowler.toString()
+                        ).length;
+                        
+                        if (bowlerBallsInOver < 6 && bowlerBallsInOver > 0) {
+                            alert(`Cannot change bowler. Current bowler has bowled ${bowlerBallsInOver} balls in this over. Please complete the over (6 balls) before changing bowler.`);
+                            e.target.value = currentBowler;
+                            return;
+                        }
+                    }
+                    
+                    setBowler(selectedBowler);
+                } else {
+                    // Only allow clearing if over is complete
+                    const currentInnings = match.currentInnings === 1 ? match.firstInnings : match.secondInnings;
+                    const validBalls = currentInnings.balls.filter(b => 
+                        b.ballType !== 'wide' && b.ballType !== 'no-ball' && b.ballType !== 'dead-ball'
+                    );
+                    const isOverComplete = validBalls.length % 6 === 0 && validBalls.length > 0;
+                    
+                    if (currentBowler && !isOverComplete) {
+                        alert('Cannot clear bowler selection. Please complete the over (6 balls) first.');
+                        e.target.value = currentBowler;
+                        return;
+                    }
+                    
+                    setBowler(null);
+                }
             });
         }
 

@@ -7,11 +7,17 @@ let currentMatch = null;
 let currentBowler = null;
 let isFreeHit = false;
 let updateBowlerSelectCallback = null;
+let buttonsSetup = false;
+let isRecordingBall = false;
 
 export function initializeControl(match) {
   currentMatch = match;
   updateControlDisplay(match);
-  setupBallButtons();
+  // Only set up buttons once
+  if (!buttonsSetup) {
+    setupBallButtons();
+    buttonsSetup = true;
+  }
 }
 
 function updateControlDisplay(match) {
@@ -207,10 +213,31 @@ function setupBallButtons() {
 }
 
 async function recordBallAction(runs) {
-  if (!currentMatch || !currentBowler) {
-    alert('Please select a bowler first');
+  // Prevent multiple simultaneous requests
+  if (isRecordingBall) {
     return;
   }
+
+  if (!currentMatch) {
+    alert('Match data not loaded');
+    return;
+  }
+
+  // Check if bowler is selected - mandatory
+  if (!currentBowler) {
+    const bowlerSelect = document.getElementById('bowler-select');
+    if (bowlerSelect) {
+      bowlerSelect.focus();
+      bowlerSelect.style.border = '2px solid red';
+      setTimeout(() => {
+        bowlerSelect.style.border = '';
+      }, 3000);
+    }
+    alert('Please select a bowler before recording a ball');
+    return;
+  }
+
+  isRecordingBall = true;
 
   const ballTypeSelect = document.getElementById('ball-type');
   const ballType = ballTypeSelect ? ballTypeSelect.value : 'normal';
@@ -228,9 +255,26 @@ async function recordBallAction(runs) {
 
     const updatedMatch = await recordBall(currentMatch._id, ballData);
     currentMatch = updatedMatch;
+    
+    // Check if over is complete (6 valid balls) - if so, clear bowler selection
+    const currentInnings = updatedMatch.currentInnings === 1 ? updatedMatch.firstInnings : updatedMatch.secondInnings;
+    const validBalls = currentInnings.balls.filter(b => 
+      b.ballType !== 'wide' && b.ballType !== 'no-ball' && b.ballType !== 'dead-ball'
+    );
+    const isOverComplete = validBalls.length % 6 === 0 && validBalls.length > 0;
+    
     updateControlDisplay(updatedMatch);
     if (updateBowlerSelectCallback) {
       updateBowlerSelectCallback(updatedMatch);
+    }
+    
+    // If over is complete, clear current bowler to allow selection of new bowler
+    if (isOverComplete) {
+      currentBowler = null;
+      const bowlerSelect = document.getElementById('bowler-select');
+      if (bowlerSelect) {
+        bowlerSelect.value = '';
+      }
     }
 
     // Reset form
@@ -245,6 +289,8 @@ async function recordBallAction(runs) {
     }
   } catch (error) {
     alert('Error recording ball: ' + error.message);
+  } finally {
+    isRecordingBall = false;
   }
 }
 
