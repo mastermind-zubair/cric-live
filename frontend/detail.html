@@ -12,7 +12,7 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">CricLive</a>
-            <div class="navbar-nav ms-auto">
+            <div class="navbar-nav ms-auto" id="nav-links">
                 <a class="nav-link" href="/">Back to Scorecard</a>
             </div>
         </div>
@@ -89,6 +89,34 @@
     <script type="module">
         import { getActiveMatch } from './js/api.js';
         import { getDismissalText, formatOvers, calculateRunRate } from './js/utils.js';
+        import { isAuthenticated } from './js/auth.js';
+
+        // Update navigation links
+        const navLinks = document.getElementById('nav-links');
+        if (isAuthenticated()) {
+            // Create Management link
+            const managementLink = document.createElement('a');
+            managementLink.className = 'nav-link';
+            managementLink.href = '/lineup.html';
+            managementLink.textContent = 'Management';
+            
+            // Create Logout link
+            const logoutLink = document.createElement('a');
+            logoutLink.className = 'nav-link';
+            logoutLink.href = '#';
+            logoutLink.textContent = 'Logout';
+            logoutLink.onclick = (e) => {
+                e.preventDefault();
+                if (confirm('Are you sure you want to logout?')) {
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/';
+                }
+            };
+            
+            // Insert Management and Logout links (Management before Logout)
+            navLinks.appendChild(managementLink);
+            navLinks.appendChild(logoutLink);
+        }
 
         let currentMatch = null;
         let currentInningsNum = 1;

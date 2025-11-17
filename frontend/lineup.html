@@ -12,7 +12,7 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">CricLive</a>
-            <div class="navbar-nav ms-auto">
+            <div class="navbar-nav ms-auto" id="nav-links">
                 <a class="nav-link" href="/">View Scorecard</a>
             </div>
         </div>
@@ -75,12 +75,54 @@
     </div>
 
     <script type="module">
-        import { createMatch, startMatch } from './js/api.js';
-        import { requireAuth } from './js/auth.js';
+        import { createMatch, startMatch, getActiveMatch } from './js/api.js';
+        import { requireAuth, isAuthenticated } from './js/auth.js';
 
         // Check authentication
         if (!requireAuth()) {
             window.location.href = '/login.html';
+        }
+
+        // Check if match is already started, redirect to control
+        async function checkActiveMatch() {
+            try {
+                const match = await getActiveMatch();
+                if (match && match.status === 'live') {
+                    window.location.href = '/control.html';
+                }
+            } catch (error) {
+                // No active match or error, continue to show lineup page
+                console.log('No active match found, showing lineup page');
+            }
+        }
+        checkActiveMatch();
+
+        // Update navigation links
+        const navLinks = document.getElementById('nav-links');
+        if (isAuthenticated()) {
+            // Create Management link (already on this page, but keep for consistency)
+            const managementLink = document.createElement('a');
+            managementLink.className = 'nav-link';
+            managementLink.href = '/lineup.html';
+            managementLink.textContent = 'Management';
+            managementLink.style.fontWeight = 'bold'; // Highlight current page
+            
+            // Create Logout link
+            const logoutLink = document.createElement('a');
+            logoutLink.className = 'nav-link';
+            logoutLink.href = '#';
+            logoutLink.textContent = 'Logout';
+            logoutLink.onclick = (e) => {
+                e.preventDefault();
+                if (confirm('Are you sure you want to logout?')) {
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/';
+                }
+            };
+            
+            // Insert Management and Logout links (Management before Logout)
+            navLinks.appendChild(managementLink);
+            navLinks.appendChild(logoutLink);
         }
 
         let teamAPlayers = [];

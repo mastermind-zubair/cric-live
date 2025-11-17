@@ -40,7 +40,20 @@
             try {
                 const response = await login(username, password);
                 setAuthToken(response.token);
-                window.location.href = '/lineup.html';
+                
+                // Check if match has already started
+                const { getActiveMatch } = await import('./js/api.js');
+                try {
+                    const match = await getActiveMatch();
+                    if (match && match.status === 'live') {
+                        window.location.href = '/control.html';
+                    } else {
+                        window.location.href = '/lineup.html';
+                    }
+                } catch (error) {
+                    // If no match found or error, go to lineup
+                    window.location.href = '/lineup.html';
+                }
             } catch (error) {
                 errorDiv.textContent = error.message || 'Login failed';
                 errorDiv.style.display = 'block';
