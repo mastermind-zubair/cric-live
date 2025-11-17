@@ -192,8 +192,11 @@
     <script type="module">
         import { getActiveMatch } from './js/api.js';
         import { startPolling, stopPolling } from './js/scoreboard.js';
-        import { initializeControl, setBowler, setUpdateBowlerSelectCallback } from './js/control.js';
+        import { initializeControl, setBowler, setUpdateBowlerSelectCallback, getCurrentBowler } from './js/control.js';
         import { requireAuth, isAuthenticated } from './js/auth.js';
+        
+        // Make currentBowler accessible in this scope
+        let currentBowler = null;
 
         // Check authentication
         if (!requireAuth()) {
@@ -406,21 +409,25 @@
                     );
                     const isOverComplete = validBalls.length % 6 === 0 && validBalls.length > 0;
                     
+                    // Get current bowler from control.js
+                    const currentBowlerValue = getCurrentBowler();
+                    
                     // If there's a current bowler and over is not complete, prevent change
-                    if (currentBowler && !isOverComplete && validBalls.length > 0) {
+                    if (currentBowlerValue && !isOverComplete && validBalls.length > 0) {
                         const currentOverBalls = validBalls.slice(-6);
                         const bowlerBallsInOver = currentOverBalls.filter(b => 
-                            b.bowler && b.bowler.toString() === currentBowler.toString()
+                            b.bowler && b.bowler.toString() === currentBowlerValue.toString()
                         ).length;
                         
                         if (bowlerBallsInOver < 6 && bowlerBallsInOver > 0) {
                             alert(`Cannot change bowler. Current bowler has bowled ${bowlerBallsInOver} balls in this over. Please complete the over (6 balls) before changing bowler.`);
-                            e.target.value = currentBowler;
+                            e.target.value = currentBowlerValue;
                             return;
                         }
                     }
                     
                     setBowler(selectedBowler);
+                    currentBowler = selectedBowler; // Update local variable
                 } else {
                     // Only allow clearing if over is complete
                     const currentInnings = match.currentInnings === 1 ? match.firstInnings : match.secondInnings;
@@ -429,13 +436,15 @@
                     );
                     const isOverComplete = validBalls.length % 6 === 0 && validBalls.length > 0;
                     
-                    if (currentBowler && !isOverComplete) {
+                    const currentBowlerValue = getCurrentBowler();
+                    if (currentBowlerValue && !isOverComplete) {
                         alert('Cannot clear bowler selection. Please complete the over (6 balls) first.');
-                        e.target.value = currentBowler;
+                        e.target.value = currentBowlerValue;
                         return;
                     }
                     
                     setBowler(null);
+                    currentBowler = null; // Update local variable
                 }
             });
         }

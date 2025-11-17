@@ -224,8 +224,15 @@ async function recordBallAction(runs) {
   }
 
   // Check if bowler is selected - mandatory
+  // First check the variable, then check the dropdown as fallback
+  const bowlerSelect = document.getElementById('bowler-select');
+  if (!currentBowler && bowlerSelect && bowlerSelect.value) {
+    // If dropdown has a value but variable is not set, set it from dropdown
+    console.log('Bowler selected in dropdown but not set in variable, setting it now:', bowlerSelect.value);
+    currentBowler = bowlerSelect.value;
+  }
+  
   if (!currentBowler) {
-    const bowlerSelect = document.getElementById('bowler-select');
     if (bowlerSelect) {
       bowlerSelect.focus();
       bowlerSelect.style.border = '2px solid red';
@@ -236,6 +243,8 @@ async function recordBallAction(runs) {
     alert('Please select a bowler before recording a ball');
     return;
   }
+  
+  console.log('Recording ball with bowler:', currentBowler); // Debug log
 
   isRecordingBall = true;
 
@@ -405,9 +414,14 @@ async function handleEndMatch() {
 
 export function setBowler(bowlerId) {
   currentBowler = bowlerId;
+  console.log('Bowler set to:', currentBowler); // Debug log
   if (currentMatch) {
     updateControlDisplay(currentMatch);
   }
+}
+
+export function getCurrentBowler() {
+  return currentBowler;
 }
 
 export function setUpdateBowlerSelectCallback(callback) {
