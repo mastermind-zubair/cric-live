@@ -192,7 +192,7 @@
     <script type="module">
         import { getActiveMatch } from './js/api.js';
         import { startPolling, stopPolling } from './js/scoreboard.js';
-        import { initializeControl, setBowler } from './js/control.js';
+        import { initializeControl, setBowler, setUpdateBowlerSelectCallback } from './js/control.js';
         import { requireAuth, isAuthenticated } from './js/auth.js';
 
         // Check authentication
@@ -233,6 +233,13 @@
             try {
                 const match = await getActiveMatch();
                 if (match) {
+                    // Debug: Log match data to console
+                    console.log('Match loaded:', match);
+                    console.log('Team A players:', match.teamA?.players);
+                    console.log('Team B players:', match.teamB?.players);
+                    console.log('First innings:', match.firstInnings);
+                    console.log('Batting first:', match.battingFirst);
+                    
                     currentMatch = match;
                     initializeControl(match);
                     updateBowlerSelect(match);
@@ -278,25 +285,81 @@
                 bowlingTeam = battingFirst === 'teamA' ? match.teamA : match.teamB;
             }
 
+            // Debug logging
+            console.log('Bowling team:', bowlingTeam);
+            console.log('Bowling team players:', bowlingTeam?.players);
+            console.log('Current innings bowling card:', currentInnings?.bowlingCard);
+
             // Populate bowler select
             bowlerSelect.innerHTML = '<option value="">Select Bowler</option>';
-            if (bowlingTeam.players) {
+            
+            // Try to get player names from bowling card first (they're populated)
+            const playerMap = new Map();
+            if (currentInnings && currentInnings.bowlingCard) {
+                currentInnings.bowlingCard.forEach(card => {
+                    if (card.player) {
+                        const playerId = card.player._id ? card.player._id.toString() : card.player.toString();
+                        const playerName = card.player.name || 'Player';
+                        playerMap.set(playerId, playerName);
+                    }
+                });
+            }
+            
+            // Populate from team players if available, otherwise use bowling card
+            if (bowlingTeam && bowlingTeam.players && bowlingTeam.players.length > 0) {
                 bowlingTeam.players.forEach(player => {
                     const option = document.createElement('option');
-                    option.value = typeof player === 'object' ? player._id : player;
-                    option.textContent = typeof player === 'object' ? player.name : 'Player';
+                    let playerId, playerName;
+                    
+                    if (typeof player === 'object' && player._id) {
+                        playerId = player._id.toString();
+                        playerName = player.name || playerMap.get(playerId) || 'Player';
+                    } else {
+                        playerId = player.toString();
+                        playerName = playerMap.get(playerId) || 'Player';
+                    }
+                    
+                    option.value = playerId;
+                    option.textContent = playerName;
+                    bowlerSelect.appendChild(option);
+                });
+            } else if (playerMap.size > 0) {
+                // Fallback: use players from bowling card if team players not available
+                playerMap.forEach((name, id) => {
+                    const option = document.createElement('option');
+                    option.value = id;
+                    option.textContent = name;
                     bowlerSelect.appendChild(option);
                 });
             }
 
-            // Populate fielder select
+            // Populate fielder select (same logic as bowler select)
             if (fielderSelect) {
                 fielderSelect.innerHTML = '<option value="">Select Fielder</option>';
-                if (bowlingTeam.players) {
+                
+                if (bowlingTeam && bowlingTeam.players && bowlingTeam.players.length > 0) {
                     bowlingTeam.players.forEach(player => {
                         const option = document.createElement('option');
-                        option.value = typeof player === 'object' ? player._id : player;
-                        option.textContent = typeof player === 'object' ? player.name : 'Player';
+                        let playerId, playerName;
+                        
+                        if (typeof player === 'object' && player._id) {
+                            playerId = player._id.toString();
+                            playerName = player.name || playerMap.get(playerId) || 'Player';
+                        } else {
+                            playerId = player.toString();
+                            playerName = playerMap.get(playerId) || 'Player';
+                        }
+                        
+                        option.value = playerId;
+                        option.textContent = playerName;
+                        fielderSelect.appendChild(option);
+                    });
+                } else if (playerMap.size > 0) {
+                    // Fallback: use players from bowling card
+                    playerMap.forEach((name, id) => {
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = name;
                         fielderSelect.appendChild(option);
                     });
                 }
