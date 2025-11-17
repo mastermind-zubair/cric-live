@@ -265,7 +265,18 @@
             if (!bowlerSelect) return;
 
             const currentInnings = match.currentInnings === 1 ? match.firstInnings : match.secondInnings;
-            const bowlingTeam = match.currentInnings === 1 ? match.teamB : match.teamA;
+            
+            // Determine bowling team based on battingFirst field
+            // Default to teamA if battingFirst is not set
+            const battingFirst = match.battingFirst || 'teamA';
+            let bowlingTeam;
+            if (match.currentInnings === 1) {
+                // First innings: if teamA is batting first, teamB bowls; otherwise teamA bowls
+                bowlingTeam = battingFirst === 'teamA' ? match.teamB : match.teamA;
+            } else {
+                // Second innings: opposite of first innings
+                bowlingTeam = battingFirst === 'teamA' ? match.teamA : match.teamB;
+            }
 
             // Populate bowler select
             bowlerSelect.innerHTML = '<option value="">Select Bowler</option>';

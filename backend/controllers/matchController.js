@@ -20,9 +20,12 @@ exports.createMatch = async (req, res) => {
   try {
     const { teamA, teamB, totalOvers, battingFirst } = req.body;
 
-    if (!teamA || !teamB || !totalOvers || !battingFirst) {
+    if (!teamA || !teamB || !totalOvers) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
+
+    // Default to teamA if battingFirst is not specified
+    const battingFirstTeam = battingFirst || 'teamA';
 
     // Create teams
     const teamADoc = await Team.create({
@@ -36,8 +39,8 @@ exports.createMatch = async (req, res) => {
     });
 
     // Initialize first innings
-    const battingTeam = battingFirst === 'teamA' ? teamADoc : teamBDoc;
-    const bowlingTeam = battingFirst === 'teamA' ? teamBDoc : teamADoc;
+    const battingTeam = battingFirstTeam === 'teamA' ? teamADoc : teamBDoc;
+    const bowlingTeam = battingFirstTeam === 'teamA' ? teamBDoc : teamADoc;
 
     const battingCard = battingTeam.players.map((playerId) => ({
       player: playerId,
@@ -78,15 +81,21 @@ exports.createMatch = async (req, res) => {
       teamA: teamADoc._id,
       teamB: teamBDoc._id,
       totalOvers: totalOvers,
-      battingFirst: battingFirst,
+      battingFirst: battingFirstTeam,
       firstInnings: firstInnings,
       currentInnings: 1,
       status: 'pending'
     });
 
     const populatedMatch = await Match.findById(match._id)
-      .populate('teamA')
-      .populate('teamB')
+      .populate({
+        path: 'teamA',
+        populate: { path: 'players' }
+      })
+      .populate({
+        path: 'teamB',
+        populate: { path: 'players' }
+      })
       .populate('firstInnings.team')
       .populate('firstInnings.striker')
       .populate('firstInnings.nonStriker')
@@ -104,8 +113,14 @@ exports.createMatch = async (req, res) => {
 exports.startMatch = async (req, res) => {
   try {
     const match = await Match.findById(req.params.id)
-      .populate('teamA')
-      .populate('teamB')
+      .populate({
+        path: 'teamA',
+        populate: { path: 'players' }
+      })
+      .populate({
+        path: 'teamB',
+        populate: { path: 'players' }
+      })
       .populate('firstInnings.team')
       .populate('firstInnings.striker')
       .populate('firstInnings.nonStriker')
@@ -119,7 +134,23 @@ exports.startMatch = async (req, res) => {
     match.status = 'live';
     await match.save();
 
-    res.json(match);
+    // Re-populate after save to ensure all data is fresh
+    const updatedMatch = await Match.findById(match._id)
+      .populate({
+        path: 'teamA',
+        populate: { path: 'players' }
+      })
+      .populate({
+        path: 'teamB',
+        populate: { path: 'players' }
+      })
+      .populate('firstInnings.team')
+      .populate('firstInnings.striker')
+      .populate('firstInnings.nonStriker')
+      .populate('firstInnings.battingCard.player')
+      .populate('firstInnings.bowlingCard.player');
+
+    res.json(updatedMatch);
   } catch (error) {
     console.error('Start match error:', error);
     res.status(500).json({ message: 'Error starting match', error: error.message });
@@ -130,8 +161,14 @@ exports.startMatch = async (req, res) => {
 exports.getActiveMatch = async (req, res) => {
   try {
     const match = await Match.findOne({ status: 'live' })
-      .populate('teamA')
-      .populate('teamB')
+      .populate({
+        path: 'teamA',
+        populate: { path: 'players' }
+      })
+      .populate({
+        path: 'teamB',
+        populate: { path: 'players' }
+      })
       .populate('firstInnings.team')
       .populate('firstInnings.striker')
       .populate('firstInnings.nonStriker')
