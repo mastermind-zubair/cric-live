@@ -43,6 +43,7 @@ export function updateScoreboard(match) {
   const extrasEl = document.getElementById('extras');
   const strikerEl = document.getElementById('striker');
   const nonStrikerEl = document.getElementById('non-striker');
+  const currentBowlerEl = document.getElementById('current-bowler');
   const targetEl = document.getElementById('target-score');
   const currentOverEl = document.getElementById('current-over');
 
@@ -53,19 +54,87 @@ export function updateScoreboard(match) {
   if (runRateEl) runRateEl.textContent = calculateRunRate(currentInnings.totalRuns, validBalls);
   if (extrasEl) extrasEl.textContent = currentInnings.extras;
 
-  // Striker and non-striker
-  const strikerCard = currentInnings.battingCard.find(b => 
-    b.player._id.toString() === currentInnings.striker.toString() && !b.isOut
-  );
-  const nonStrikerCard = currentInnings.battingCard.find(b => 
-    b.player._id.toString() === currentInnings.nonStriker.toString() && !b.isOut
-  );
+  // Striker and non-striker - Handle both cases: player as object or player as ID
+  const strikerId = currentInnings.striker && currentInnings.striker._id 
+    ? currentInnings.striker._id.toString() 
+    : (currentInnings.striker ? currentInnings.striker.toString() : null);
+    
+  const nonStrikerId = currentInnings.nonStriker && currentInnings.nonStriker._id 
+    ? currentInnings.nonStriker._id.toString() 
+    : (currentInnings.nonStriker ? currentInnings.nonStriker.toString() : null);
+  
+  // Find striker card
+  const strikerCard = strikerId ? currentInnings.battingCard.find(b => {
+    if (!b.player) return false;
+    const playerId = b.player && b.player._id ? b.player._id.toString() : b.player.toString();
+    return playerId === strikerId && !b.isOut;
+  }) : null;
+  
+  // Find non-striker card
+  const nonStrikerCard = nonStrikerId ? currentInnings.battingCard.find(b => {
+    if (!b.player) return false;
+    const playerId = b.player && b.player._id ? b.player._id.toString() : b.player.toString();
+    return playerId === nonStrikerId && !b.isOut;
+  }) : null;
 
-  if (strikerEl && strikerCard) {
-    strikerEl.textContent = `${strikerCard.player.name} ${strikerCard.runs} (${strikerCard.balls})`;
+  // Display striker
+  if (strikerEl) {
+    if (strikerCard && strikerCard.player) {
+      const playerName = strikerCard.player.name || (typeof strikerCard.player === 'string' ? strikerCard.player : 'Player');
+      strikerEl.textContent = `${playerName} ${strikerCard.runs || 0} (${strikerCard.balls || 0})`;
+    } else if (currentInnings.striker && currentInnings.striker.name) {
+      // Fallback: use striker object directly if available
+      strikerEl.textContent = `${currentInnings.striker.name} 0 (0)`;
+    } else {
+      strikerEl.textContent = '-';
+    }
   }
-  if (nonStrikerEl && nonStrikerCard) {
-    nonStrikerEl.textContent = `${nonStrikerCard.player.name} ${nonStrikerCard.runs} (${nonStrikerCard.balls})`;
+  
+  // Display non-striker
+  if (nonStrikerEl) {
+    if (nonStrikerCard && nonStrikerCard.player) {
+      const playerName = nonStrikerCard.player.name || (typeof nonStrikerCard.player === 'string' ? nonStrikerCard.player : 'Player');
+      nonStrikerEl.textContent = `${playerName} ${nonStrikerCard.runs || 0} (${nonStrikerCard.balls || 0})`;
+    } else if (currentInnings.nonStriker && currentInnings.nonStriker.name) {
+      // Fallback: use nonStriker object directly if available
+      nonStrikerEl.textContent = `${currentInnings.nonStriker.name} 0 (0)`;
+    } else {
+      nonStrikerEl.textContent = '-';
+    }
+  }
+
+  // Display current bowler
+  if (currentBowlerEl) {
+    if (currentInnings.currentBowler) {
+      const bowler = currentInnings.currentBowler;
+      const bowlerName = bowler.name || (typeof bowler === 'string' ? 'Player' : 'Player');
+      
+      // Find bowler card to get stats
+      const bowlerCard = currentInnings.bowlingCard.find(b => {
+        if (!b.player) return false;
+        const playerId = b.player && b.player._id ? b.player._id.toString() : b.player.toString();
+        const bowlerId = bowler._id ? bowler._id.toString() : bowler.toString();
+        return playerId === bowlerId;
+      });
+      
+      if (bowlerCard && bowlerCard.player) {
+        const totalBalls = bowlerCard.balls + (bowlerCard.overs * 6);
+        const oversDisplay = formatOvers(totalBalls);
+        currentBowlerEl.textContent = `${bowlerCard.player.name || bowlerName} - ${bowlerCard.wickets}/${bowlerCard.runs} (${oversDisplay})`;
+      } else {
+        currentBowlerEl.textContent = bowlerName;
+      }
+    } else {
+      // Try to get bowler from last ball
+      const lastBall = currentInnings.balls[currentInnings.balls.length - 1];
+      if (lastBall && lastBall.bowler) {
+        const bowler = lastBall.bowler;
+        const bowlerName = bowler.name || (typeof bowler === 'string' ? 'Player' : 'Player');
+        currentBowlerEl.textContent = bowlerName;
+      } else {
+        currentBowlerEl.textContent = '-';
+      }
+    }
   }
 
   // Target score (for 2nd innings)

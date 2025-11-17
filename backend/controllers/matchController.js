@@ -172,13 +172,19 @@ exports.getActiveMatch = async (req, res) => {
       .populate('firstInnings.team')
       .populate('firstInnings.striker')
       .populate('firstInnings.nonStriker')
+      .populate('firstInnings.currentBowler')
       .populate('firstInnings.battingCard.player')
       .populate('firstInnings.bowlingCard.player')
+      .populate('firstInnings.balls.bowler')
+      .populate('firstInnings.balls.batsman')
       .populate('secondInnings.team')
       .populate('secondInnings.striker')
       .populate('secondInnings.nonStriker')
+      .populate('secondInnings.currentBowler')
       .populate('secondInnings.battingCard.player')
-      .populate('secondInnings.bowlingCard.player');
+      .populate('secondInnings.bowlingCard.player')
+      .populate('secondInnings.balls.bowler')
+      .populate('secondInnings.balls.batsman');
 
     if (!match) {
       return res.status(404).json({ message: 'No active match found' });
@@ -408,12 +414,16 @@ exports.recordBall = async (req, res) => {
       .populate('firstInnings.currentBowler')
       .populate('firstInnings.battingCard.player')
       .populate('firstInnings.bowlingCard.player')
+      .populate('firstInnings.balls.bowler')
+      .populate('firstInnings.balls.batsman')
       .populate('secondInnings.team')
       .populate('secondInnings.striker')
       .populate('secondInnings.nonStriker')
       .populate('secondInnings.currentBowler')
       .populate('secondInnings.battingCard.player')
-      .populate('secondInnings.bowlingCard.player');
+      .populate('secondInnings.bowlingCard.player')
+      .populate('secondInnings.balls.bowler')
+      .populate('secondInnings.balls.batsman');
 
     res.json(updatedMatch);
   } catch (error) {
