@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CricLive - Game Control</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Top Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">CricLive</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">View Scorecard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Current Score Section -->
+        <div class="control-section">
+            <h3>Current Score</h3>
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Innings:</strong> <span id="control-innings-type">1st Innings</span>
+                </div>
+                <div class="col-md-3">
+                    <strong>Score:</strong> <span id="control-score">0/0</span>
+                </div>
+                <div class="col-md-3">
+                    <strong>Overs:</strong> <span id="control-overs">0.0 / 20</span>
+                </div>
+                <div class="col-md-3">
+                    <strong>Run Rate:</strong> <span id="control-run-rate">0.00</span>
+                </div>
+            </div>
+            <div class="row mt-2" id="control-target" style="display: none;">
+                <div class="col-md-6">
+                    <span class="target-score" id="control-target"></span>
+                </div>
+                <div class="col-md-6">
+                    <strong>Required Run Rate:</strong> <span id="control-required-run-rate"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Batting Side Section -->
+        <div class="control-section">
+            <h3>Batting Side</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card striker-highlight">
+                        <div class="card-header bg-warning">
+                            <strong>Striker</strong>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0" id="control-striker">-</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <strong>Non-Striker</strong>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0" id="control-non-striker">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bowling Side Section -->
+        <div class="control-section">
+            <h3>Bowling Side</h3>
+            <div class="mb-3">
+                <label for="bowler-select" class="form-label">Select Current Bowler</label>
+                <select class="form-select" id="bowler-select">
+                    <option value="">Select Bowler</option>
+                </select>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <strong>Bowler:</strong> <span id="control-bowler">-</span>
+                </div>
+                <div class="col-md-6">
+                    <strong>Stats:</strong> <span id="control-bowler-stats">-</span>
+                </div>
+            </div>
+            <div class="mt-2">
+                <strong>Ball-by-Ball Status:</strong>
+                <div id="ball-by-ball-status" class="mt-2"></div>
+            </div>
+        </div>
+
+        <!-- Ball-by-Ball Action Board -->
+        <div class="ball-action-board">
+            <h3>Ball-by-Ball Action</h3>
+            
+            <!-- Score Buttons -->
+            <div class="mb-3">
+                <label class="form-label">Runs Scored</label>
+                <div>
+                    <button type="button" class="btn btn-primary score-btn" id="score-0">0</button>
+                    <button type="button" class="btn btn-primary score-btn" id="score-1">1</button>
+                    <button type="button" class="btn btn-primary score-btn" id="score-2">2</button>
+                    <button type="button" class="btn btn-primary score-btn" id="score-3">3</button>
+                    <button type="button" class="btn btn-primary score-btn" id="score-4">4</button>
+                    <button type="button" class="btn btn-primary score-btn" id="score-5">5</button>
+                    <button type="button" class="btn btn-primary score-btn" id="score-6">6</button>
+                </div>
+            </div>
+
+            <!-- Ball Status -->
+            <div class="mb-3">
+                <label for="ball-type" class="form-label">Ball Status</label>
+                <select class="form-select" id="ball-type">
+                    <option value="normal">Normal</option>
+                    <option value="wide">Wide</option>
+                    <option value="no-ball">No Ball</option>
+                    <option value="dead-ball">Dead Ball</option>
+                </select>
+            </div>
+
+            <!-- Free Hit -->
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="free-hit">
+                    <label class="form-check-label" for="free-hit">
+                        Free Hit
+                    </label>
+                </div>
+            </div>
+
+            <!-- Wicket Button -->
+            <div class="mb-3">
+                <button type="button" class="btn btn-danger btn-lg" id="wicket-btn">Wicket</button>
+            </div>
+        </div>
+
+        <!-- Innings Control -->
+        <div class="control-section">
+            <h3>Innings Control</h3>
+            <div class="d-grid gap-2">
+                <button type="button" class="btn btn-warning btn-lg" id="end-innings-btn">End Innings</button>
+                <button type="button" class="btn btn-danger btn-lg" id="end-match-btn">End Match</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wicket Modal -->
+    <div class="modal fade" id="wicket-modal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Record Wicket</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="wicket-form">
+                        <div class="mb-3">
+                            <label for="dismissal-type" class="form-label">Dismissal Type</label>
+                            <select class="form-select" id="dismissal-type" required>
+                                <option value="">Select Type</option>
+                                <option value="bowled">Bowled</option>
+                                <option value="catch">Catch</option>
+                                <option value="stump-out">Stumped</option>
+                                <option value="run-out">Run Out</option>
+                                <option value="hit-wicket">Hit Wicket</option>
+                                <option value="LBW">LBW</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="fielder-group" style="display: none;">
+                            <label for="fielder-select" class="form-label">Fielder</label>
+                            <select class="form-select" id="fielder-select">
+                                <option value="">Select Fielder</option>
+                            </select>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Record Wicket</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { getActiveMatch } from './js/api.js';
+        import { startPolling, stopPolling } from './js/scoreboard.js';
+        import { initializeControl, setBowler } from './js/control.js';
+        import { requireAuth } from './js/auth.js';
+
+        // Check authentication
+        if (!requireAuth()) {
+            window.location.href = '/login.html';
+        }
+
+        let currentMatch = null;
+
+        async function loadMatch() {
+            try {
+                const match = await getActiveMatch();
+                if (match) {
+                    currentMatch = match;
+                    initializeControl(match);
+                    updateBowlerSelect(match);
+                    
+                    // Start polling for updates
+                    startPolling((updatedMatch) => {
+                        if (updatedMatch) {
+                            currentMatch = updatedMatch;
+                            initializeControl(updatedMatch);
+                        }
+                    }, 2000);
+                } else {
+                    alert('No active match found. Please create a match first.');
+                    window.location.href = '/lineup.html';
+                }
+            } catch (error) {
+                console.error('Error loading match:', error);
+                if (error.message && error.message.includes('404')) {
+                    alert('No active match found. Please create a match first.');
+                    window.location.href = '/lineup.html';
+                } else {
+                    alert('Error loading match. Please try again.');
+                }
+            }
+        }
+
+        function updateBowlerSelect(match) {
+            const bowlerSelect = document.getElementById('bowler-select');
+            const fielderSelect = document.getElementById('fielder-select');
+            if (!bowlerSelect) return;
+
+            const currentInnings = match.currentInnings === 1 ? match.firstInnings : match.secondInnings;
+            const bowlingTeam = match.currentInnings === 1 ? match.teamB : match.teamA;
+
+            // Populate bowler select
+            bowlerSelect.innerHTML = '<option value="">Select Bowler</option>';
+            if (bowlingTeam.players) {
+                bowlingTeam.players.forEach(player => {
+                    const option = document.createElement('option');
+                    option.value = typeof player === 'object' ? player._id : player;
+                    option.textContent = typeof player === 'object' ? player.name : 'Player';
+                    bowlerSelect.appendChild(option);
+                });
+            }
+
+            // Populate fielder select
+            if (fielderSelect) {
+                fielderSelect.innerHTML = '<option value="">Select Fielder</option>';
+                if (bowlingTeam.players) {
+                    bowlingTeam.players.forEach(player => {
+                        const option = document.createElement('option');
+                        option.value = typeof player === 'object' ? player._id : player;
+                        option.textContent = typeof player === 'object' ? player.name : 'Player';
+                        fielderSelect.appendChild(option);
+                    });
+                }
+            }
+
+            // Set current bowler if available
+            if (currentInnings.currentBowler) {
+                bowlerSelect.value = typeof currentInnings.currentBowler === 'object' 
+                    ? currentInnings.currentBowler._id 
+                    : currentInnings.currentBowler;
+                setBowler(bowlerSelect.value);
+            }
+
+            // Remove existing listener and add new one
+            const newBowlerSelect = bowlerSelect.cloneNode(true);
+            bowlerSelect.parentNode.replaceChild(newBowlerSelect, bowlerSelect);
+            newBowlerSelect.addEventListener('change', (e) => {
+                setBowler(e.target.value);
+            });
+        }
+
+        // Set callback for updating bowler select
+        setUpdateBowlerSelectCallback(updateBowlerSelect);
+
+        // Show/hide fielder based on dismissal type
+        document.getElementById('dismissal-type')?.addEventListener('change', (e) => {
+            const fielderGroup = document.getElementById('fielder-group');
+            if (['catch', 'stump-out', 'run-out'].includes(e.target.value)) {
+                fielderGroup.style.display = 'block';
+            } else {
+                fielderGroup.style.display = 'none';
+            }
+        });
+
+        // Load match on page load
+        loadMatch();
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopPolling();
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

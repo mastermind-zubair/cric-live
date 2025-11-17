@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CricLive - Match Lineup</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Top Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">CricLive</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">View Scorecard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="lineup-container">
+            <h2 class="text-center mb-4">Match Lineup Configuration</h2>
+
+            <form id="lineup-form">
+                <!-- Team A -->
+                <div class="mb-4">
+                    <h4>Team A</h4>
+                    <div class="mb-3">
+                        <label for="team-a-name" class="form-label">Team A Name</label>
+                        <input type="text" class="form-control" id="team-a-name" required>
+                    </div>
+                    <div id="team-a-players">
+                        <h5>Team A Players (11 players required)</h5>
+                        <button type="button" class="btn btn-sm btn-secondary mb-2" onclick="addPlayer('team-a')">Add Player</button>
+                    </div>
+                </div>
+
+                <!-- Team B -->
+                <div class="mb-4">
+                    <h4>Team B</h4>
+                    <div class="mb-3">
+                        <label for="team-b-name" class="form-label">Team B Name</label>
+                        <input type="text" class="form-control" id="team-b-name" required>
+                    </div>
+                    <div id="team-b-players">
+                        <h5>Team B Players (11 players required)</h5>
+                        <button type="button" class="btn btn-sm btn-secondary mb-2" onclick="addPlayer('team-b')">Add Player</button>
+                    </div>
+                </div>
+
+                <!-- Match Settings -->
+                <div class="mb-4">
+                    <h4>Match Settings</h4>
+                    <div class="mb-3">
+                        <label for="total-overs" class="form-label">Total Overs per Innings</label>
+                        <input type="number" class="form-control" id="total-overs" min="1" max="50" value="20" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="batting-first" class="form-label">Batting First</label>
+                        <select class="form-select" id="batting-first" required>
+                            <option value="teamA">Team A</option>
+                            <option value="teamB">Team B</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg">Start Match</button>
+                </div>
+
+                <div id="error-message" class="alert alert-danger mt-3" style="display: none;"></div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createMatch, startMatch } from './js/api.js';
+        import { requireAuth } from './js/auth.js';
+
+        // Check authentication
+        if (!requireAuth()) {
+            window.location.href = '/login.html';
+        }
+
+        let teamAPlayers = [];
+        let teamBPlayers = [];
+
+        window.addPlayer = function(team, playerData = null) {
+            const playerId = `${team}-player-${Date.now()}`;
+            const playerDiv = document.createElement('div');
+            playerDiv.className = 'player-item mb-2';
+            playerDiv.id = playerId;
+            playerDiv.innerHTML = `
+                <div class="row">
+                    <div class="col-md-3">
+                        <input type="text" class="form-control form-control-sm" placeholder="Player Name" value="${playerData ? playerData.name || '' : ''}" required>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select form-select-sm" required>
+                            <option value="">Position</option>
+                            <option value="opening" ${playerData && playerData.battingPosition === 'opening' ? 'selected' : ''}>Opening</option>
+                            <option value="middle-order" ${playerData && playerData.battingPosition === 'middle-order' ? 'selected' : ''}>Middle Order</option>
+                            <option value="lower-order" ${playerData && playerData.battingPosition === 'lower-order' ? 'selected' : ''}>Lower Order</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select form-select-sm" required>
+                            <option value="">Batting Type</option>
+                            <option value="left-hand" ${playerData && playerData.battingType === 'left-hand' ? 'selected' : ''}>Left Hand</option>
+                            <option value="right-hand" ${playerData && playerData.battingType === 'right-hand' ? 'selected' : ''}>Right Hand</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select form-select-sm" required>
+                            <option value="">Bowling Type</option>
+                            <option value="none" ${playerData && (!playerData.bowlingType || playerData.bowlingType === 'none') ? 'selected' : ''}>None</option>
+                            <option value="fast" ${playerData && playerData.bowlingType === 'fast' ? 'selected' : ''}>Fast</option>
+                            <option value="medium" ${playerData && playerData.bowlingType === 'medium' ? 'selected' : ''}>Medium</option>
+                            <option value="leg-spin" ${playerData && playerData.bowlingType === 'leg-spin' ? 'selected' : ''}>Leg Spin</option>
+                            <option value="off-spin" ${playerData && playerData.bowlingType === 'off-spin' ? 'selected' : ''}>Off Spin</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-sm btn-danger" onclick="removePlayer('${playerId}')">Remove</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById(`${team}-players`).appendChild(playerDiv);
+        };
+
+        window.removePlayer = function(playerId) {
+            document.getElementById(playerId).remove();
+        };
+
+        // Pakistan cricket team (Team A)
+        const pakistanTeam = [
+            { name: 'Babar Azam', battingPosition: 'opening', battingType: 'right-hand', bowlingType: 'none' },
+            { name: 'Fakhar Zaman', battingPosition: 'opening', battingType: 'left-hand', bowlingType: 'none' },
+            { name: 'Mohammad Rizwan', battingPosition: 'middle-order', battingType: 'right-hand', bowlingType: 'none' },
+            { name: 'Iftikhar Ahmed', battingPosition: 'middle-order', battingType: 'right-hand', bowlingType: 'off-spin' },
+            { name: 'Shadab Khan', battingPosition: 'middle-order', battingType: 'right-hand', bowlingType: 'leg-spin' },
+            { name: 'Imad Wasim', battingPosition: 'middle-order', battingType: 'left-hand', bowlingType: 'off-spin' },
+            { name: 'Mohammad Nawaz', battingPosition: 'lower-order', battingType: 'left-hand', bowlingType: 'off-spin' },
+            { name: 'Shaheen Afridi', battingPosition: 'lower-order', battingType: 'left-hand', bowlingType: 'fast' },
+            { name: 'Haris Rauf', battingPosition: 'lower-order', battingType: 'right-hand', bowlingType: 'fast' },
+            { name: 'Naseem Shah', battingPosition: 'lower-order', battingType: 'right-hand', bowlingType: 'fast' },
+            { name: 'Mohammad Wasim', battingPosition: 'lower-order', battingType: 'right-hand', bowlingType: 'fast' }
+        ];
+
+        // India cricket team (Team B)
+        const indiaTeam = [
+            { name: 'Rohit Sharma', battingPosition: 'opening', battingType: 'right-hand', bowlingType: 'off-spin' },
+            { name: 'Virat Kohli', battingPosition: 'opening', battingType: 'right-hand', bowlingType: 'medium' },
+            { name: 'KL Rahul', battingPosition: 'middle-order', battingType: 'right-hand', bowlingType: 'none' },
+            { name: 'Suryakumar Yadav', battingPosition: 'middle-order', battingType: 'right-hand', bowlingType: 'none' },
+            { name: 'Hardik Pandya', battingPosition: 'middle-order', battingType: 'right-hand', bowlingType: 'fast' },
+            { name: 'Ravindra Jadeja', battingPosition: 'middle-order', battingType: 'left-hand', bowlingType: 'off-spin' },
+            { name: 'Rishabh Pant', battingPosition: 'middle-order', battingType: 'left-hand', bowlingType: 'none' },
+            { name: 'Jasprit Bumrah', battingPosition: 'lower-order', battingType: 'right-hand', bowlingType: 'fast' },
+            { name: 'Mohammed Shami', battingPosition: 'lower-order', battingType: 'right-hand', bowlingType: 'fast' },
+            { name: 'Yuzvendra Chahal', battingPosition: 'lower-order', battingType: 'right-hand', bowlingType: 'leg-spin' },
+            { name: 'Kuldeep Yadav', battingPosition: 'lower-order', battingType: 'left-hand', bowlingType: 'leg-spin' }
+        ];
+
+        // Prefill form with team data
+        function prefillTeams() {
+            // Set team names
+            document.getElementById('team-a-name').value = 'Pakistan';
+            document.getElementById('team-b-name').value = 'India';
+
+            // Clear existing players
+            document.getElementById('team-a-players').innerHTML = '<h5>Team A Players (11 players required)</h5><button type="button" class="btn btn-sm btn-secondary mb-2" onclick="addPlayer(\'team-a\')">Add Player</button>';
+            document.getElementById('team-b-players').innerHTML = '<h5>Team B Players (11 players required)</h5><button type="button" class="btn btn-sm btn-secondary mb-2" onclick="addPlayer(\'team-b\')">Add Player</button>';
+
+            // Add Pakistan players
+            pakistanTeam.forEach(player => {
+                addPlayer('team-a', player);
+            });
+
+            // Add India players
+            indiaTeam.forEach(player => {
+                addPlayer('team-b', player);
+            });
+        }
+
+        // Initialize with prefilled teams
+        prefillTeams();
+
+        document.getElementById('lineup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Collect Team A players
+            teamAPlayers = [];
+            document.querySelectorAll('#team-a-players .player-item').forEach(item => {
+                const inputs = item.querySelectorAll('input, select');
+                if (inputs[0].value) {
+                    teamAPlayers.push({
+                        name: inputs[0].value,
+                        battingPosition: inputs[1].value,
+                        battingType: inputs[2].value,
+                        bowlingType: inputs[3].value
+                    });
+                }
+            });
+
+            // Collect Team B players
+            teamBPlayers = [];
+            document.querySelectorAll('#team-b-players .player-item').forEach(item => {
+                const inputs = item.querySelectorAll('input, select');
+                if (inputs[0].value) {
+                    teamBPlayers.push({
+                        name: inputs[0].value,
+                        battingPosition: inputs[1].value,
+                        battingType: inputs[2].value,
+                        bowlingType: inputs[3].value
+                    });
+                }
+            });
+
+            if (teamAPlayers.length !== 11 || teamBPlayers.length !== 11) {
+                document.getElementById('error-message').textContent = 'Each team must have exactly 11 players';
+                document.getElementById('error-message').style.display = 'block';
+                return;
+            }
+
+            try {
+                // Create players in database and get IDs
+                const teamAPlayerIds = await Promise.all(teamAPlayers.map(async (player) => {
+                    const response = await fetch('http://localhost:3000/api/player/create', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: JSON.stringify(player)
+                    });
+                    const data = await response.json();
+                    return data._id || data.id;
+                }));
+
+                const teamBPlayerIds = await Promise.all(teamBPlayers.map(async (player) => {
+                    const response = await fetch('http://localhost:3000/api/player/create', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: JSON.stringify(player)
+                    });
+                    const data = await response.json();
+                    return data._id || data.id;
+                }));
+
+                // Create match
+                const matchData = {
+                    teamA: {
+                        name: document.getElementById('team-a-name').value,
+                        players: teamAPlayerIds
+                    },
+                    teamB: {
+                        name: document.getElementById('team-b-name').value,
+                        players: teamBPlayerIds
+                    },
+                    totalOvers: parseInt(document.getElementById('total-overs').value),
+                    battingFirst: document.getElementById('batting-first').value
+                };
+
+                const match = await createMatch(matchData);
+                await startMatch(match._id);
+                
+                window.location.href = '/control.html';
+            } catch (error) {
+                document.getElementById('error-message').textContent = error.message || 'Error creating match';
+                document.getElementById('error-message').style.display = 'block';
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

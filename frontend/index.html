@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CricLive - Live Score</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Top Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">CricLive</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/login.html" id="login-link">Login</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="scorecard-container">
+            <h2 class="text-center mb-4">Live Cricket Score</h2>
+            
+            <div id="no-match" class="alert alert-info text-center" style="display: none;">
+                <h4>No Active Match</h4>
+                <p>There is currently no active match. Please login to start a new match.</p>
+            </div>
+
+            <div id="match-display" style="display: none;">
+                <!-- Innings Indicator -->
+                <div class="text-center mb-3">
+                    <span class="innings-indicator" id="innings-indicator">1st Innings</span>
+                </div>
+
+                <!-- Main Score -->
+                <div class="text-center mb-4">
+                    <div class="score-display">
+                        <span id="total-runs">0</span> / <span id="total-wickets">0</span>
+                    </div>
+                    <div class="mt-2">
+                        <span id="overs">0.0 / 20</span> overs
+                    </div>
+                </div>
+
+                <!-- Target Score (2nd Innings) -->
+                <div class="text-center mb-3" id="target-score" style="display: none;">
+                    <span class="target-score"></span>
+                </div>
+
+                <!-- Run Rate -->
+                <div class="text-center mb-3">
+                    <span class="run-rate">Run Rate: <span id="run-rate">0.00</span></span>
+                </div>
+
+                <!-- Extras -->
+                <div class="text-center mb-3">
+                    <strong>Extras:</strong> <span id="extras">0</span>
+                </div>
+
+                <!-- Current Over -->
+                <div class="text-center mb-4">
+                    <div class="current-over-display">
+                        <strong>Current Over:</strong> <span id="current-over">No balls bowled</span>
+                    </div>
+                </div>
+
+                <!-- Batsmen -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-warning">
+                                <strong>Striker</strong>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-0" id="striker">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <strong>Non-Striker</strong>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-0" id="non-striker">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detail Link -->
+                <div class="text-center detail-link">
+                    <a href="/detail.html" class="btn btn-primary btn-lg">View Detailed Scorecard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { startPolling, stopPolling, updateScoreboard } from './js/scoreboard.js';
+        import { isAuthenticated } from './js/auth.js';
+
+        // Update login link
+        const loginLink = document.getElementById('login-link');
+        if (isAuthenticated()) {
+            loginLink.textContent = 'Logout';
+            loginLink.href = '#';
+            loginLink.onclick = (e) => {
+                e.preventDefault();
+                localStorage.removeItem('authToken');
+                window.location.reload();
+            };
+        }
+
+        // Start polling for active match
+        startPolling((match) => {
+            if (match) {
+                document.getElementById('no-match').style.display = 'none';
+                document.getElementById('match-display').style.display = 'block';
+                updateScoreboard(match);
+            } else {
+                document.getElementById('no-match').style.display = 'block';
+                document.getElementById('match-display').style.display = 'none';
+            }
+        }, 2000);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopPolling();
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

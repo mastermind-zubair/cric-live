@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CricLive - Detailed Scorecard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Top Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">CricLive</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">Back to Scorecard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="scorecard-container">
+            <h2 class="text-center mb-4">Detailed Scorecard</h2>
+            
+            <div id="no-match" class="alert alert-info text-center" style="display: none;">
+                <h4>No Active Match</h4>
+                <p>There is currently no active match.</p>
+            </div>
+
+            <div id="match-display" style="display: none;">
+                <!-- Innings Tabs -->
+                <ul class="nav nav-tabs mb-4" id="innings-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-innings="1" href="#">1st Innings</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-innings="2" href="#">2nd Innings</a>
+                    </li>
+                </ul>
+
+                <!-- Batting Card -->
+                <div class="batting-card">
+                    <h4>Batting Card</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Player</th>
+                                    <th>Dismissal</th>
+                                    <th>Runs</th>
+                                    <th>Balls</th>
+                                    <th>4s</th>
+                                    <th>6s</th>
+                                    <th>SR</th>
+                                </tr>
+                            </thead>
+                            <tbody id="batting-card-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bowling Card -->
+                <div class="bowling-card">
+                    <h4>Bowling Card</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Bowler</th>
+                                    <th>Overs</th>
+                                    <th>Maidens</th>
+                                    <th>Runs</th>
+                                    <th>Wickets</th>
+                                    <th>No Balls</th>
+                                    <th>Wides</th>
+                                    <th>Economy</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bowling-card-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { getActiveMatch } from './js/api.js';
+        import { getDismissalText, formatOvers, calculateRunRate } from './js/utils.js';
+
+        let currentMatch = null;
+        let currentInningsNum = 1;
+
+        async function loadMatch() {
+            try {
+                const match = await getActiveMatch();
+                currentMatch = match;
+                if (match) {
+                    document.getElementById('no-match').style.display = 'none';
+                    document.getElementById('match-display').style.display = 'block';
+                    displayInnings(1);
+                } else {
+                    document.getElementById('no-match').style.display = 'block';
+                    document.getElementById('match-display').style.display = 'none';
+                }
+            } catch (error) {
+                document.getElementById('no-match').style.display = 'block';
+                document.getElementById('match-display').style.display = 'none';
+            }
+        }
+
+        function displayInnings(inningsNum) {
+            if (!currentMatch) return;
+
+            const innings = inningsNum === 1 ? currentMatch.firstInnings : currentMatch.secondInnings;
+            if (!innings) {
+                document.getElementById('batting-card-body').innerHTML = '<tr><td colspan="7" class="text-center">Innings not started</td></tr>';
+                document.getElementById('bowling-card-body').innerHTML = '<tr><td colspan="8" class="text-center">Innings not started</td></tr>';
+                return;
+            }
+
+            // Display batting card
+            const battingBody = document.getElementById('batting-card-body');
+            battingBody.innerHTML = innings.battingCard.map(card => {
+                const player = card.player.name || 'N/A';
+                let dismissal = '';
+                if (card.isOut) {
+                    dismissal = getDismissalText(card.dismissalType);
+                    if (card.dismissedBy) {
+                        const bowler = typeof card.dismissedBy === 'object' ? card.dismissedBy.name : 'N/A';
+                        dismissal += ` b ${bowler}`;
+                    }
+                    if (card.fielder) {
+                        const fielder = typeof card.fielder === 'object' ? card.fielder.name : 'N/A';
+                        dismissal += ` (${fielder})`;
+                    }
+                } else {
+                    dismissal = 'not out';
+                }
+                const strikeRate = card.balls > 0 ? ((card.runs / card.balls) * 100).toFixed(2) : '0.00';
+                return `
+                    <tr>
+                        <td>${player}</td>
+                        <td>${dismissal}</td>
+                        <td>${card.runs}</td>
+                        <td>${card.balls}</td>
+                        <td>${card.fours}</td>
+                        <td>${card.sixes}</td>
+                        <td>${strikeRate}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Display bowling card
+            const bowlingBody = document.getElementById('bowling-card-body');
+            bowlingBody.innerHTML = innings.bowlingCard.map(card => {
+                const player = card.player.name || 'N/A';
+                const totalBalls = card.balls + (card.overs * 6);
+                const oversDisplay = formatOvers(totalBalls);
+                const economy = totalBalls > 0 ? ((card.runs / totalBalls) * 6).toFixed(2) : '0.00';
+                return `
+                    <tr>
+                        <td>${player}</td>
+                        <td>${oversDisplay}</td>
+                        <td>${card.maidens}</td>
+                        <td>${card.runs}</td>
+                        <td>${card.wickets}</td>
+                        <td>${card.noBalls}</td>
+                        <td>${card.wides}</td>
+                        <td>${economy}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Setup innings tabs
+        document.querySelectorAll('[data-innings]').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                e.preventDefault();
+                currentInningsNum = parseInt(tab.dataset.innings);
+                document.querySelectorAll('[data-innings]').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                displayInnings(currentInningsNum);
+            });
+        });
+
+        // Load match on page load
+        loadMatch();
+
+        // Refresh every 3 seconds
+        setInterval(loadMatch, 3000);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
