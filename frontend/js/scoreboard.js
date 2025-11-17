@@ -105,35 +105,76 @@ export function updateScoreboard(match) {
 
   // Display current bowler
   if (currentBowlerEl) {
+    let bowlerId = null;
+    let bowlerName = null;
+    
+    // First try to get from currentBowler field
     if (currentInnings.currentBowler) {
       const bowler = currentInnings.currentBowler;
-      const bowlerName = bowler.name || (typeof bowler === 'string' ? 'Player' : 'Player');
-      
-      // Find bowler card to get stats
+      bowlerId = bowler._id ? bowler._id.toString() : bowler.toString();
+      bowlerName = bowler.name || null;
+    }
+    
+    // If not found, try to get from last valid ball
+    if (!bowlerId && currentInnings.balls && currentInnings.balls.length > 0) {
+      // Get last valid ball (not wide, no-ball, or dead-ball)
+      const validBalls = currentInnings.balls.filter(b => 
+        b.ballType !== 'wide' && b.ballType !== 'no-ball' && b.ballType !== 'dead-ball'
+      );
+      if (validBalls.length > 0) {
+        const lastValidBall = validBalls[validBalls.length - 1];
+        if (lastValidBall && lastValidBall.bowler) {
+          const bowler = lastValidBall.bowler;
+          bowlerId = bowler._id ? bowler._id.toString() : bowler.toString();
+          bowlerName = bowler.name || null;
+        }
+      }
+    }
+    
+    // If we have a bowler ID, find the bowler card for stats
+    if (bowlerId) {
+      // Always look up in bowling card to get the name and stats
       const bowlerCard = currentInnings.bowlingCard.find(b => {
         if (!b.player) return false;
         const playerId = b.player && b.player._id ? b.player._id.toString() : b.player.toString();
-        const bowlerId = bowler._id ? bowler._id.toString() : bowler.toString();
         return playerId === bowlerId;
       });
       
       if (bowlerCard && bowlerCard.player) {
+        // Get player name from bowling card (most reliable)
+        const playerName = bowlerCard.player.name || bowlerName || 'Player';
         const totalBalls = bowlerCard.balls + (bowlerCard.overs * 6);
         const oversDisplay = formatOvers(totalBalls);
-        currentBowlerEl.textContent = `${bowlerCard.player.name || bowlerName} - ${bowlerCard.wickets}/${bowlerCard.runs} (${oversDisplay})`;
-      } else {
+        currentBowlerEl.textContent = `${playerName} - ${bowlerCard.wickets}/${bowlerCard.runs} (${oversDisplay})`;
+      } else if (bowlerName) {
+        // Fallback: use name from bowler object if available
         currentBowlerEl.textContent = bowlerName;
+      } else {
+        // Try to find bowler in team players as last resort
+        const battingFirst = match.battingFirst || 'teamA';
+        const bowlingTeam = match.currentInnings === 1 
+          ? (battingFirst === 'teamA' ? match.teamB : match.teamA)
+          : (battingFirst === 'teamA' ? match.teamA : match.teamB);
+        
+        if (bowlingTeam && bowlingTeam.players) {
+          const bowlerPlayer = bowlingTeam.players.find(p => {
+            const playerId = p._id ? p._id.toString() : p.toString();
+            return playerId === bowlerId;
+          });
+          
+          if (bowlerPlayer && bowlerPlayer.name) {
+            currentBowlerEl.textContent = bowlerPlayer.name;
+          } else {
+            console.log('Bowler ID found but no name:', bowlerId);
+            currentBowlerEl.textContent = '-';
+          }
+        } else {
+          console.log('Bowler ID found but no name or team players:', bowlerId);
+          currentBowlerEl.textContent = '-';
+        }
       }
     } else {
-      // Try to get bowler from last ball
-      const lastBall = currentInnings.balls[currentInnings.balls.length - 1];
-      if (lastBall && lastBall.bowler) {
-        const bowler = lastBall.bowler;
-        const bowlerName = bowler.name || (typeof bowler === 'string' ? 'Player' : 'Player');
-        currentBowlerEl.textContent = bowlerName;
-      } else {
-        currentBowlerEl.textContent = '-';
-      }
+      currentBowlerEl.textContent = '-';
     }
   }
 
